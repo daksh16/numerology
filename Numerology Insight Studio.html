@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Numerology Insight Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{
+  --bg:#f6f7fb; --surface:#ffffff; --border:#e3e6ef; --text:#1a2138; --text-dim:#5b6478;
+  --primary:#2b4cf2; --primary-dim:#e8ecff; --indigo:#5b3df2; --teal:#0ea394;
+  --green:#1f9d55; --amber:#c98a05; --red:#d1364a;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --bg:#0f1220; --surface:#171b2c; --border:#2a2f45; --text:#eef0f8; --text-dim:#9aa2bd;
+    --primary:#6d85ff; --primary-dim:#1c2340; --indigo:#9b8cff; --teal:#3fd4c1;
+    --green:#3ecb7b; --amber:#e6b325; --red:#ff6b7f;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1220; --surface:#171b2c; --border:#2a2f45; --text:#eef0f8; --text-dim:#9aa2bd;
+  --primary:#6d85ff; --primary-dim:#1c2340; --indigo:#9b8cff; --teal:#3fd4c1;
+  --green:#3ecb7b; --amber:#e6b325; --red:#ff6b7f;
+}
+html,body{height:100%; background:var(--bg); color:var(--text); font-family:Inter,system-ui,sans-serif;}
+.serif{font-family:Fraunces,serif;}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:16px;}
+.chip{border-radius:999px; padding:2px 10px; font-size:12px; font-weight:600;}
+.btn{border-radius:10px; padding:8px 14px; font-weight:600; font-size:14px; transition:.15s;}
+.btn-primary{background:var(--primary); color:#fff;}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text);}
+.btn-ghost:hover{background:var(--primary-dim);}
+.tab{padding:8px 14px; border-radius:10px; font-size:14px; font-weight:600; color:var(--text-dim); cursor:pointer;}
+.tab.active{background:var(--primary-dim); color:var(--primary);}
+.gridcell{aspect-ratio:1; border-radius:14px; border:1px solid var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:.15s;}
+.gridcell:hover{border-color:var(--primary); transform:translateY(-2px);}
+.gridcell.present{background:var(--primary-dim);}
+.gridcell.missing{background:transparent; opacity:.5;}
+.dasha-card{min-width:150px; border-radius:14px; border:1px solid var(--border); padding:10px 12px; cursor:pointer; transition:.15s;}
+.dasha-card:hover{border-color:var(--primary);}
+.dasha-card.current{border-color:var(--red); background:color-mix(in srgb, var(--red) 10%, var(--surface));}
+::-webkit-scrollbar{height:8px; width:8px;} ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px;}
+input,select,textarea{background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:8px 10px; font-size:14px;}
+a{color:var(--primary);}
+@media print{ .no-print{display:none!important;} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============ ENGINE (pure functions, no UI concerns) ============ */
+const NUMBER_MEANINGS = {
+  1:{title:"The Leader",keywords:["independence","initiative","drive"],strengths:"Self-reliant, decisive, pioneering.",challenges:"Can tip into stubbornness or impatience.",career:"Founders, leadership, entrepreneurship.",relationships:"Needs autonomy; does best with a partner who respects independence."},
+  2:{title:"The Diplomat",keywords:["harmony","sensitivity","partnership"],strengths:"Cooperative, intuitive, attentive to others.",challenges:"May over-accommodate or hesitate to assert needs.",career:"Mediation, counselling, partnerships, support roles.",relationships:"Deeply loyal; thrives on emotional closeness."},
+  3:{title:"The Communicator",keywords:["expression","creativity","optimism"],strengths:"Articulate, imaginative, socially warm.",challenges:"Can scatter energy across too many pursuits.",career:"Writing, performance, marketing, teaching.",relationships:"Playful and expressive; needs room to be heard."},
+  4:{title:"The Builder",keywords:["structure","discipline","reliability"],strengths:"Methodical, dependable, grounded.",challenges:"Risk of rigidity or over-caution.",career:"Engineering, operations, finance, administration.",relationships:"Steady and dependable, values routine and trust."},
+  5:{title:"The Free Spirit",keywords:["change","adventure","versatility"],strengths:"Adaptable, curious, quick to learn.",challenges:"May avoid commitment or crave constant novelty.",career:"Sales, travel, media, entrepreneurship.",relationships:"Needs freedom; drawn to variety and stimulation."},
+  6:{title:"The Nurturer",keywords:["responsibility","care","harmony"],strengths:"Compassionate, dependable, community-minded.",challenges:"Can overextend into self-sacrifice.",career:"Healthcare, education, hospitality, family business.",relationships:"Devoted caretaker; family and home often central."},
+  7:{title:"The Seeker",keywords:["analysis","introspection","depth"],strengths:"Reflective, analytical, spiritually curious.",challenges:"May become withdrawn or overly guarded.",career:"Research, science, spirituality, analysis.",relationships:"Values deep, unhurried connection over small talk."},
+  8:{title:"The Achiever",keywords:["ambition","authority","material mastery"],strengths:"Goal-oriented, capable manager of resources.",challenges:"Can become consumed by status or control.",career:"Business, management, finance, law.",relationships:"Provides strongly; may need to balance work and intimacy."},
+  9:{title:"The Humanitarian",keywords:["compassion","completion","idealism"],strengths:"Generous, big-picture thinker, empathetic.",challenges:"May struggle with endings or over-idealize others.",career:"Nonprofits, arts, healing professions, activism.",relationships:"Gives generously; benefits from reciprocity."}
+};
+const RATIO = {1:7,2:10,3:9,4:8,5:5,6:6,7:7,8:8,9:9};
+const RATIO_TOTAL = Object.values(RATIO).reduce((a,b)=>a+b,0);
+const LOSHU_LAYOUT = [[3,1,9],[6,7,5],[2,8,4]];
+
+function reduceNumber(n, keepMaster=false){
+  n = Math.abs(n);
+  while(n>9){
+    if(keepMaster && (n===11||n===22||n===33)) break;
+    n = String(n).split("").reduce((a,d)=>a+ +d,0);
+  }
+  return n;
+}
+function parseDOB(str){
+  // accepts DD/MM/YYYY or YYYY-MM-DD
+  let m = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(m) return {day:+m[1], month:+m[2], year:+m[3]};
+  m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return {day:+m[3], month:+m[2], year:+m[1]};
+  return null;
+}
+function validateDOB(parts){
+  if(!parts) return "Enter a date as DD/MM/YYYY or YYYY-MM-DD.";
+  const d = new Date(parts.year, parts.month-1, parts.day);
+  if(d.getMonth()+1 !== parts.month || d.getDate() !== parts.day) return "That date does not exist.";
+  if(d > new Date()) return "Date of birth cannot be in the future.";
+  if(parts.year < 1900) return "Please enter a birth year after 1900.";
+  return null;
+}
+function calculateRootNumber(day, keepMaster=false){ return reduceNumber(day, keepMaster); }
+function calculateDestinyNumber(parts, keepMaster=false){
+  const digits = `${parts.day}${parts.month}${parts.year}`.split("").reduce((a,d)=>a+ +d,0);
+  return reduceNumber(digits, keepMaster);
+}
+function breakdown(parts){
+  const day = reduceNumber(parts.day);
+  const month = reduceNumber(parts.month);
+  const yearSum = String(parts.year).split("").reduce((a,d)=>a+ +d,0);
+  const year = reduceNumber(yearSum);
+  const total = reduceNumber(day+month+year);
+  return {day,month,yearSum,year,total};
+}
+function generateGrid(parts){
+  const digitString = `${parts.day}${parts.month}${parts.year}`.replace(/0/g,"");
+  const counts = {};
+  for(let i=1;i<=9;i++) counts[i]=0;
+  digitString.split("").forEach(d=>counts[+d]++);
+  return {system:"lo-shu", layout:LOSHU_LAYOUT, counts};
+}
+function analyzeGrid(grid){
+  const present=[], missing=[], repeated=[];
+  for(let n=1;n<=9;n++){
+    const c = grid.counts[n];
+    if(c===0) missing.push(n); else present.push(n);
+    if(c>1) repeated.push({number:n,count:c});
+  }
+  const observations = [];
+  repeated.forEach(r=>observations.push(`Number ${r.number} occurs ${r.count} times — traditionally read as an amplified, dominant influence.`));
+  if(missing.length) observations.push(`Numbers ${missing.join(", ")} are absent from the grid — often interpreted as qualities to be consciously developed rather than innate.`);
+  else observations.push("No numbers are absent — traditionally read as a well-rounded distribution of qualities.");
+  return {present,missing,repeated,observations};
+}
+function addYears(date, years){
+  const d = new Date(date);
+  const whole = Math.floor(years), frac = years-whole;
+  d.setFullYear(d.getFullYear()+whole);
+  d.setDate(d.getDate() + Math.round(frac*365.25));
+  return d;
+}
+function subdivide(startDate, durationYears, startNumber){
+  const periods=[]; let cur=new Date(startDate);
+  for(let i=0;i<9;i++){
+    const num = ((startNumber-1+i)%9)+1;
+    const dur = durationYears * RATIO[num]/RATIO_TOTAL;
+    const end = addYears(cur,dur);
+    periods.push({number:num, start:new Date(cur), end:new Date(end), duration:dur});
+    cur = end;
+  }
+  return periods;
+}
+function generateMahadashaTimeline(dob, rootNumber, maxAge=96){
+  const periods=[]; let cur=new Date(dob); let num=rootNumber; let age=0;
+  while(age<maxAge){
+    const dur = RATIO[num];
+    const end = addYears(cur,dur);
+    periods.push({number:num, start:new Date(cur), end:new Date(end), duration:dur, startAge:age, endAge:age+dur});
+    cur=end; age+=dur; num = num%9+1;
+  }
+  return periods;
+}
+function getCurrentPeriod(periods, date){
+  return periods.find(p=>date>=p.start && date<p.end) || null;
+}
+function ageInYears(dob, now){ return (now-dob)/(365.25*24*3600*1000); }
+
+function buildChart(name, dobStr, keepMaster=false){
+  const parts = parseDOB(dobStr);
+  const err = validateDOB(parts);
+  if(err) return {error:err};
+  const dob = new Date(parts.year, parts.month-1, parts.day);
+  const root = calculateRootNumber(parts.day, keepMaster);
+  const destiny = calculateDestinyNumber(parts, keepMaster);
+  const grid = generateGrid(parts);
+  const gridAnalysis = analyzeGrid(grid);
+  const mahaTimeline = generateMahadashaTimeline(dob, root);
+  const now = new Date();
+  const age = ageInYears(dob, now);
+  const currentMaha = getCurrentPeriod(mahaTimeline, now);
+  let currentAntar=null, currentPratya=null, antarTimeline=[];
+  if(currentMaha){
+    antarTimeline = subdivide(currentMaha.start, currentMaha.duration, currentMaha.number);
+    currentAntar = getCurrentPeriod(antarTimeline, now);
+    if(currentAntar){
+      const pratyaTimeline = subdivide(currentAntar.start, currentAntar.duration, currentAntar.number);
+      currentPratya = getCurrentPeriod(pratyaTimeline, now);
+    }
+  }
+  return {
+    name: name || "Untitled Client", dobStr, dob, parts, root, destiny,
+    breakdown: breakdown(parts), grid, gridAnalysis, mahaTimeline, age,
+    currentMaha, currentAntar, currentPratya, createdAt: new Date().toISOString()
+  };
+}
+function lifeSummary(chart){
+  const r = NUMBER_MEANINGS[chart.root], d = NUMBER_MEANINGS[chart.destiny];
+  const dominant = chart.gridAnalysis.repeated.sort((a,b)=>b.count-a.count)[0];
+  const dNum = dominant ? NUMBER_MEANINGS[dominant.number] : null;
+  const cm = chart.currentMaha ? NUMBER_MEANINGS[chart.currentMaha.number] : null;
+  return `**Core Personality Pattern.** With a Root Number of ${chart.root} (${r.title}), ${chart.name} may naturally lead with ${r.keywords.join(", ")}. The Destiny Number ${chart.destiny} (${d.title}) traditionally layers in a life-direction theme of ${d.keywords.join(", ")}.
+
+**Natural Strengths.** ${r.strengths} ${d.strengths}
+
+**Areas of Development.** ${r.challenges} ${d.challenges}
+
+**Career & Work Themes.** Traditionally associated tendencies: ${r.career} Destiny-linked tendencies: ${d.career}
+
+**Relationships.** ${r.relationships} ${d.relationships}
+
+**Grid Pattern.** ${chart.gridAnalysis.observations.join(" ")}${dNum ? ` The dominant grid number ${dominant.number} (${dNum.title}) may be read as an especially emphasized theme in daily life.` : ""}
+
+**Current Period.** ${cm ? `The current Mahadasha carries the number ${chart.currentMaha.number} (${cm.title}), spanning roughly age ${chart.currentMaha.startAge.toFixed(1)} to ${chart.currentMaha.endAge.toFixed(1)}. Within this, it may be worth noting how the ${cm.keywords[0]} theme interacts with the core Root and Destiny pattern above.` : "No current period could be determined."}
+
+This reading follows one configured numerology methodology (Lo Shu grid, proportional Vimshottari-style Dasha division) and is offered as an interpretive tradition, not a deterministic or medical/financial forecast. Outcomes described with "may," "often," or "traditionally" are not guarantees.`;
+}
+
+/* ============ STORAGE ============ */
+const Store = {
+  get(){ try{ return JSON.parse(localStorage.getItem("nis_clients")||"[]"); }catch(e){ return []; } },
+  save(list){ try{ localStorage.setItem("nis_clients", JSON.stringify(list)); }catch(e){} },
+  add(chart){ const list=this.get(); list.unshift({...chart, id: Date.now().toString(36)}); this.save(list); return list; },
+  remove(id){ const list=this.get().filter(c=>c.id!==id); this.save(list); return list; }
+};
+
+/* ============ RENDER ============ */
+const state = { view:"dashboard", chart:null, tab:"overview", theme: localStorage.getItem("nis_theme")||"auto", expandedMaha:null, expandedAntar:null, selectedGridNum:null };
+function fmt(d){ return new Date(d).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); }
+function setTheme(t){ state.theme=t; localStorage.setItem("nis_theme",t); document.documentElement.setAttribute("data-theme", t==="auto"?"":t); render(); }
+function go(view, extra){ state.view=view; Object.assign(state, extra||{}); render(); }
+
+function Nav(){
+  const items = [["dashboard","Dashboard"],["new","New Analysis"],["clients","Clients"],["reference","Reference"]];
+  return `<div class="flex items-center gap-1">${items.map(([k,l])=>`
+    <div class="tab ${state.view===k?"active":""}" onclick="go('${k}')">${l}</div>`).join("")}</div>`;
+}
+function Header(){
+  return `<div class="flex items-center justify-between px-6 py-4 border-b no-print" style="border-color:var(--border)">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold" style="background:var(--primary)">N</div>
+      <div><div class="font-extrabold serif text-lg leading-none">Numerology Insight Studio</div>
+      <div class="text-xs" style="color:var(--text-dim)">Decode Numbers. Understand Patterns. Explore Life Cycles.</div></div>
+    </div>
+    ${Nav()}
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost" onclick="setTheme(state.theme==='dark'?'light':'dark')">${state.theme==="dark"?"☀️ Light":"🌙 Dark"}</button>
+    </div>
+  </div>`;
+}
+function StatCard(label,val,color){
+  return `<div class="card p-4"><div class="text-xs font-semibold" style="color:var(--text-dim)">${label}</div>
+  <div class="text-2xl font-extrabold mt-1" style="color:${color||'var(--text)'}">${val}</div></div>`;
+}
+function Dashboard(){
+  const clients = Store.get();
+  return `<div class="p-6 max-w-6xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-extrabold serif">Dashboard</h1>
+    <button class="btn btn-primary" onclick="go('new')">+ New Analysis</button>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    ${StatCard("Total Clients", clients.length)}
+    ${StatCard("Charts Generated", clients.length, "var(--indigo)")}
+    ${StatCard("Active Mahadashas", clients.filter(c=>c.currentMaha).length, "var(--teal)")}
+    ${StatCard("Reports Available", clients.length, "var(--green)")}
+  </div>
+  <div class="card p-4">
+    <div class="font-bold mb-3">Recent Clients</div>
+    ${clients.length===0? EmptyState("No clients yet.","Create your first numerology chart to begin.") :
+    `<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left" style="color:var(--text-dim)">
+      <th class="pb-2">Name</th><th class="pb-2">DOB</th><th class="pb-2">Root</th><th class="pb-2">Destiny</th><th class="pb-2">Current Mahadasha</th><th class="pb-2"></th></tr></thead>
+      <tbody>${clients.slice(0,8).map(c=>`<tr class="border-t" style="border-color:var(--border)">
+        <td class="py-2 font-medium">${c.name}</td><td>${c.dobStr}</td><td>${c.root}</td><td>${c.destiny}</td>
+        <td>${c.currentMaha?c.currentMaha.number:"—"}</td>
+        <td><button class="btn btn-ghost" onclick="openClient('${c.id}')">Open</button></td></tr>`).join("")}</tbody></table></div>`}
+  </div></div>`;
+}
+function EmptyState(title,sub){
+  return `<div class="text-center py-10" style="color:var(--text-dim)">
+  <div class="text-lg font-bold" style="color:var(--text)">${title}</div><div class="mt-1 mb-4">${sub}</div>
+  <button class="btn btn-primary" onclick="go('new')">Create Analysis</button></div>`;
+}
+function NewAnalysis(){
+  return `<div class="p-6 max-w-xl mx-auto">
+  <h1 class="text-2xl font-extrabold serif mb-1">New Analysis</h1>
+  <p class="text-sm mb-6" style="color:var(--text-dim)">Enter birth details to generate the chart.</p>
+  <div class="card p-5 space-y-4">
+    <div><label class="text-xs font-semibold" style="color:var(--text-dim)">Full Name</label>
+    <input id="f_name" class="w-full mt-1" placeholder="e.g. Demo Client"></div>
+    <div><label class="text-xs font-semibold" style="color:var(--text-dim)">Date of Birth *</label>
+    <input id="f_dob" class="w-full mt-1" placeholder="DD/MM/YYYY or YYYY-MM-DD" value="20/10/1998"></div>
+    <div id="f_err" class="text-sm" style="color:var(--red)"></div>
+    <button class="btn btn-primary w-full" onclick="submitAnalysis()">Generate Analysis</button>
+  </div></div>`;
+}
+function submitAnalysis(){
+  const name = document.getElementById("f_name").value.trim();
+  const dob = document.getElementById("f_dob").value.trim();
+  const chart = buildChart(name, dob);
+  if(chart.error){ document.getElementById("f_err").innerText = chart.error; return; }
+  go("chart", {chart, tab:"overview", expandedMaha:null, expandedAntar:null, selectedGridNum:null});
+}
+function openClient(id){
+  const c = Store.get().find(x=>x.id===id);
+  if(!c) return;
+  c.dob = new Date(c.dob);
+  c.mahaTimeline.forEach(p=>{p.start=new Date(p.start); p.end=new Date(p.end);});
+  if(c.currentMaha){c.currentMaha.start=new Date(c.currentMaha.start); c.currentMaha.end=new Date(c.currentMaha.end);}
+  if(c.currentAntar){c.currentAntar.start=new Date(c.currentAntar.start); c.currentAntar.end=new Date(c.currentAntar.end);}
+  go("chart",{chart:c, tab:"overview"});
+}
+function saveClient(){
+  Store.add(state.chart);
+  render();
+}
+function ClientsPage(){
+  const clients = Store.get();
+  return `<div class="p-6 max-w-6xl mx-auto">
+  <h1 class="text-2xl font-extrabold serif mb-4">Clients</h1>
+  ${clients.length===0? EmptyState("No clients yet.","Create your first numerology chart to begin.") :
+  `<div class="grid md:grid-cols-3 gap-4">${clients.map(c=>`
+    <div class="card p-4">
+      <div class="font-bold">${c.name}</div>
+      <div class="text-xs mt-1" style="color:var(--text-dim)">DOB: ${c.dobStr}</div>
+      <div class="flex gap-2 mt-2 text-xs">
+        <span class="chip" style="background:var(--primary-dim); color:var(--primary)">Root ${c.root}</span>
+        <span class="chip" style="background:var(--primary-dim); color:var(--indigo)">Destiny ${c.destiny}</span>
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button class="btn btn-ghost flex-1" onclick="openClient('${c.id}')">Open</button>
+        <button class="btn btn-ghost" onclick="removeClient('${c.id}')">Delete</button>
+      </div>
+    </div>`).join("")}</div>`}
+  </div>`;
+}
+function removeClient(id){ Store.remove(id); render(); }
+
+function ChartHeader(c){
+  return `<div class="flex flex-wrap items-center justify-between gap-3 mb-4 no-print">
+  <div>
+    <button class="text-sm mb-1" style="color:var(--text-dim)" onclick="go('dashboard')">&larr; Back to Dashboard</button>
+    <h1 class="text-2xl font-extrabold serif">${c.name}</h1>
+    <div class="flex gap-2 mt-2 text-xs">
+      <span class="chip" style="background:var(--primary-dim); color:var(--primary)">DOB ${c.dobStr}</span>
+      <span class="chip" style="background:var(--primary-dim); color:var(--indigo)">Root ${c.root}</span>
+      <span class="chip" style="background:var(--primary-dim); color:var(--teal)">Destiny ${c.destiny}</span>
+      <span class="chip" style="background:var(--primary-dim); color:var(--text-dim)">Age ${c.age.toFixed(1)}</span>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    <button class="btn btn-ghost" onclick="saveClient()">Save as Client</button>
+    <button class="btn btn-ghost" onclick="window.print()">Print / PDF</button>
+  </div></div>`;
+}
+function Tabs(){
+  const tabs=[["overview","Overview"],["grid","Grid"],["dashas","Dashas"],["timeline","Timeline"],["life","Life Analysis"]];
+  return `<div class="flex gap-1 mb-5 no-print">${tabs.map(([k,l])=>`<div class="tab ${state.tab===k?"active":""}" onclick="go('chart',{tab:'${k}'})">${l}</div>`).join("")}</div>`;
+}
+function OverviewTab(c){
+  const rm=NUMBER_MEANINGS[c.root], dm=NUMBER_MEANINGS[c.destiny];
+  return `<div class="grid md:grid-cols-2 gap-4">
+    <div class="card p-4"><div class="font-bold mb-2">Core Numbers</div>
+      <div class="text-sm space-y-1">
+      <div>Day ${c.breakdown.day} + Month ${c.breakdown.month} + Year ${c.breakdown.year} → Total ${c.breakdown.total}</div>
+      <div style="color:var(--text-dim)">Root ${c.root} — ${rm.title}. Destiny ${c.destiny} — ${dm.title}.</div></div></div>
+    <div class="card p-4"><div class="font-bold mb-2">Current Period</div>
+      <div class="text-sm">${c.currentMaha? `Mahadasha <b>${c.currentMaha.number}</b> (${fmt(c.currentMaha.start)} – ${fmt(c.currentMaha.end)})<br>
+      Antardasha <b>${c.currentAntar?c.currentAntar.number:"—"}</b>, Pratyantardasha <b>${c.currentPratya?c.currentPratya.number:"—"}</b>` : "Not determined."}</div></div>
+    <div class="card p-4 md:col-span-2"><div class="font-bold mb-2">Grid Snapshot</div>
+      <div class="text-sm" style="color:var(--text-dim)">${c.gridAnalysis.observations.join(" ")}</div></div>
+  </div>`;
+}
+function GridTab(c){
+  const sel = state.selectedGridNum;
+  const cellHtml = c.grid.layout.map(row=>row.map(n=>{
+    const cnt=c.grid.counts[n];
+    return `<div class="gridcell ${cnt>0?"present":"missing"} ${sel===n?"ring-2":""}" style="${sel===n?'border-color:var(--primary)':''}" onclick="go('chart',{selectedGridNum:${n}})">
+      <div class="text-2xl font-extrabold">${n}</div>
+      <div class="text-xs" style="color:var(--text-dim)">${cnt>0?`× ${cnt}`:"missing"}</div></div>`;
+  }).join("")).join("");
+  const detail = sel ? (()=>{ const m=NUMBER_MEANINGS[sel]; const cnt=c.grid.counts[sel];
+    return `<div class="card p-4"><div class="font-bold text-lg">Number ${sel} — ${m.title}</div>
+    <div class="text-xs mb-2" style="color:var(--text-dim)">Occurrences: ${cnt}</div>
+    <div class="text-sm space-y-1">
+      <div><b>Keywords:</b> ${m.keywords.join(", ")}</div>
+      <div><b>Strengths:</b> ${m.strengths}</div>
+      <div><b>Challenges:</b> ${m.challenges}</div>
+      <div><b>Career:</b> ${m.career}</div>
+      <div><b>Relationships:</b> ${m.relationships}</div>
+      <div style="color:var(--text-dim)">Root relation: ${sel===c.root?"matches Root Number.":"differs from Root Number."} Destiny relation: ${sel===c.destiny?"matches Destiny Number.":"differs from Destiny Number."}</div>
+    </div></div>`;})() : `<div class="card p-4 text-sm" style="color:var(--text-dim)">Click a number to see its detailed interpretation.</div>`;
+  return `<div class="grid md:grid-cols-2 gap-4">
+    <div><div class="grid grid-cols-3 gap-3 max-w-sm mx-auto">${cellHtml}</div></div>
+    <div class="space-y-3">${detail}
+    <div class="card p-4"><div class="font-bold mb-2">Grid Analysis</div>
+      <ul class="text-sm list-disc pl-4 space-y-1" style="color:var(--text-dim)">${c.gridAnalysis.observations.map(o=>`<li>${o}</li>`).join("")}</ul></div>
+    </div></div>`;
+}
+function DashasTab(c){
+  const em = state.expandedMaha, ea = state.expandedAntar;
+  const now = new Date();
+  const mahaCards = c.mahaTimeline.map(p=>{
+    const isCurrent = now>=p.start && now<p.end;
+    return `<div class="dasha-card ${isCurrent?"current":""} ${em===p.number+'-'+p.start.getFullYear()?"ring-2":""}" onclick="go('chart',{expandedMaha:'${p.number}-${p.start.getFullYear()}', expandedAntar:null})">
+      <div class="text-xs" style="color:var(--text-dim)">${fmt(p.start)} – ${fmt(p.end)}</div>
+      <div class="font-extrabold text-lg">Mahadasha ${p.number}</div>
+      <div class="text-xs" style="color:var(--text-dim)">Age ${p.startAge.toFixed(0)}–${p.endAge.toFixed(0)}</div>
+      ${isCurrent?'<span class="chip mt-1 inline-block" style="background:var(--red);color:#fff">Current</span>':''}
+    </div>`;
+  }).join("");
+  let antarSection="", pratyaSection="";
+  if(em){
+    const [num, yr] = em.split("-");
+    const p = c.mahaTimeline.find(x=>x.number==num && x.start.getFullYear()==yr);
+    const antar = subdivide(p.start, p.duration, p.number);
+    antarSection = `<div class="mt-4"><div class="font-bold mb-2">Antardasha within Mahadasha ${p.number}</div>
+      <div class="flex gap-3 overflow-x-auto pb-2">${antar.map(a=>{
+        const isCurrent = now>=a.start && now<a.end;
+        return `<div class="dasha-card ${isCurrent?"current":""} ${ea===a.number+'-'+a.start.getTime()?"ring-2":""}" onclick="go('chart',{expandedAntar:'${a.number}-${a.start.getTime()}'})">
+        <div class="text-xs" style="color:var(--text-dim)">${fmt(a.start)} – ${fmt(a.end)}</div>
+        <div class="font-bold">Antardasha ${a.number}</div>
+        ${isCurrent?'<span class="chip mt-1 inline-block" style="background:var(--red);color:#fff">Current</span>':''}</div>`;
+      }).join("")}</div></div>`;
+    if(ea){
+      const [anum, atime] = ea.split("-");
+      const a = antar.find(x=>x.number==anum && x.start.getTime()==atime);
+      if(a){
+        const pratya = subdivide(a.start, a.duration, a.number);
+        pratyaSection = `<div class="mt-4"><div class="font-bold mb-2">Pratyantardasha within Antardasha ${a.number}</div>
+        <div class="flex gap-3 overflow-x-auto pb-2">${pratya.map(pr=>{
+          const isCurrent = now>=pr.start && now<pr.end;
+          return `<div class="dasha-card ${isCurrent?"current":""}">
+          <div class="text-xs" style="color:var(--text-dim)">${fmt(pr.start)} – ${fmt(pr.end)}</div>
+          <div class="font-bold">Pratyantardasha ${pr.number}</div>
+          ${isCurrent?'<span class="chip mt-1 inline-block" style="background:var(--red);color:#fff">Current</span>':''}</div>`;
+        }).join("")}</div></div>`;
+      }
+    }
+  }
+  return `<div>
+  <div class="text-sm mb-2" style="color:var(--text-dim)">Click a Mahadasha to reveal its Antardasha; click an Antardasha to reveal its Pratyantardasha.</div>
+  <div class="flex gap-3 overflow-x-auto pb-2">${mahaCards}</div>
+  ${antarSection}${pratyaSection}
+  </div>`;
+}
+function TimelineTab(c){
+  const maxAge=96;
+  const marks=[0,5,10,15,20,25,30,35,40,45,50,60,70,80,90];
+  const now = new Date(); const curAge = c.age;
+  return `<div class="card p-5">
+  <div class="relative h-16 mb-2">
+    <div class="absolute top-8 left-0 right-0 h-1" style="background:var(--border)"></div>
+    ${c.mahaTimeline.map(p=>{
+      const left = (p.startAge/maxAge)*100, width=((p.endAge-p.startAge)/maxAge)*100;
+      const isCurrent = now>=p.start && now<p.end;
+      return `<div title="Mahadasha ${p.number}: ${fmt(p.start)} – ${fmt(p.end)}" class="absolute top-6 h-3 rounded-full" style="left:${left}%;width:${width}%;background:${isCurrent?'var(--red)':'var(--primary)'};opacity:${isCurrent?1:.5}"></div>`;
+    }).join("")}
+    <div class="absolute top-4 h-8 w-0.5" style="left:${(curAge/maxAge)*100}%; background:var(--text)"></div>
+  </div>
+  <div class="relative h-4 text-xs" style="color:var(--text-dim)">
+    ${marks.map(m=>`<span class="absolute" style="left:${(m/maxAge)*100}%">${m}</span>`).join("")}
+  </div>
+  <div class="mt-8 text-sm" style="color:var(--text-dim)">Vertical marker shows current age (${curAge.toFixed(1)}). Bars show Mahadasha periods; the highlighted bar is the current period.</div>
+  </div>`;
+}
+function LifeTab(c){
+  const summary = lifeSummary(c);
+  const html = summary.split("\n\n").map(p=>{
+    const m = p.match(/^\*\*(.+?)\*\*(.*)$/s);
+    return m ? `<div class="mb-3"><div class="font-bold mb-1">${m[1]}</div><div class="text-sm" style="color:var(--text-dim)">${m[2].trim()}</div></div>` : `<div class="text-sm mb-3" style="color:var(--text-dim)">${p}</div>`;
+  }).join("");
+  return `<div class="card p-5"><div class="font-extrabold serif text-lg mb-3">Complete Life Summary</div>${html}</div>`;
+}
+function ChartView(){
+  const c = state.chart;
+  const tabMap = {overview:OverviewTab, grid:GridTab, dashas:DashasTab, timeline:TimelineTab, life:LifeTab};
+  return `<div class="p-6 max-w-5xl mx-auto">${ChartHeader(c)}${Tabs()}${tabMap[state.tab](c)}</div>`;
+}
+function ReferencePage(){
+  return `<div class="p-6 max-w-5xl mx-auto">
+  <h1 class="text-2xl font-extrabold serif mb-4">Numerology Reference</h1>
+  <div class="grid md:grid-cols-3 gap-4">
+    ${Object.entries(NUMBER_MEANINGS).map(([n,m])=>`
+    <div class="card p-4"><div class="font-extrabold text-lg">${n} — ${m.title}</div>
+    <div class="text-xs mt-1" style="color:var(--text-dim)">${m.keywords.join(", ")}</div>
+    <div class="text-sm mt-2"><b>Strengths:</b> ${m.strengths}</div>
+    <div class="text-sm mt-1"><b>Challenges:</b> ${m.challenges}</div>
+    <div class="text-sm mt-1"><b>Career:</b> ${m.career}</div></div>`).join("")}
+  </div>
+  <p class="text-xs mt-4" style="color:var(--text-dim)">These are traditional numerology associations from one configured methodology, presented for interpretive purposes — not medical, legal, or financial guidance.</p>
+  </div>`;
+}
+function render(){
+  document.documentElement.setAttribute("data-theme", state.theme==="auto"?"":state.theme);
+  let body="";
+  if(state.view==="dashboard") body=Dashboard();
+  else if(state.view==="new") body=NewAnalysis();
+  else if(state.view==="clients") body=ClientsPage();
+  else if(state.view==="chart") body=ChartView();
+  else if(state.view==="reference") body=ReferencePage();
+  document.getElementById("app").innerHTML = Header()+body;
+}
+render();
+</script>
+</body>
+</html>
